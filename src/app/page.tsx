@@ -2,7 +2,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Card } from "@/components/Card";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Feature = {
   title: string;
@@ -33,15 +36,49 @@ const features: Feature[] = [
 ];
 
 export default function HomePage() {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white">読み込み中...</div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 flex items-center justify-center">
       <div className="w-full max-w-2xl px-4 py-8">
-        <h1 className="text-2xl font-bold text-white mb-2 text-center">
-          ダッシュボード
-        </h1>
-        <p className="text-sm text-slate-300 mb-6 text-center">
-          使いたい機能を選んでください
-        </p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-2">
+              ダッシュボード
+            </h1>
+            <p className="text-sm text-slate-300">
+              使いたい機能を選んでください
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-400">{user.email}</span>
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+            >
+              ログアウト
+            </button>
+          </div>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {features.map((feature) => (

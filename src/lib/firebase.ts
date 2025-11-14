@@ -1,6 +1,7 @@
 // lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // 👉 ここを自分の firebaseConfig で置き換え
 const firebaseConfig = {
@@ -18,3 +19,6 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Firestore インスタンスを export
 export const db = getFirestore(app);
+
+// Auth インスタンスを export
+export const auth = getAuth(app);
