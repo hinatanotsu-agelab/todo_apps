@@ -58,27 +58,14 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <div className="w-full max-w-2xl px-4 py-8">
-        <div className="mb-8 flex items-center justify-end gap-4">
-          <span className="text-sm text-slate-400">{user.email}</span>
-            <button
-              onClick={() => signOut()}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
-            >
-              ログアウト
-            </button>
-          </div>
-        <div className="flex justify-center items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">
-              ダッシュボード
-            </h1>
-            <p className="text-sm text-slate-300">
-              使いたい機能を選んでください
-            </p>
-          </div>
-        </div>
+    <main className="fixed inset-0 bg-slate-900 flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-2xl px-4 py-8 overflow-y-auto max-h-screen">
+        <h1 className="text-2xl font-bold text-white mb-2 text-center">
+          ダッシュボード
+        </h1>
+        <p className="text-sm text-slate-300 mb-6 text-center">
+          使いたい機能を選んでください
+        </p>
 
         <div className="grid gap-4 md:grid-cols-2">
           {features.map((feature) => (

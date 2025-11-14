@@ -20,6 +20,11 @@
 
 /* ライトテーマ判定は無効化（常時ダーク） */
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: radial-gradient(circle at 30% 20%, #1e293b, #0f172a 70%);
   color: var(--foreground);

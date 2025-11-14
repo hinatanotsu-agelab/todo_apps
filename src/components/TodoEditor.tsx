@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 
 export type Todo = {
-  id: number;
+  id: string;
   text: string;
   done: boolean;
   date?: string;

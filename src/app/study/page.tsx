@@ -1,19 +1,28 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Card } from "@/components/Card";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { BackLink } from "@/components/BackLink";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  onSnapshot,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type StudyLog = {
-  id: number;
+  id: string;
   subject: string;
   minutes: number;
   memo: string;
-  createdAt: string;
+  createdAt: any;
 };
 
-const SUBJECT_OPTIONS = ["数学", "英語", "情報", "物理", "その他"];
+const SUBJECT_OPTIONS = ["数学", "英語", "情報", "物理", "化学", "その他"];
 
 export default function StudyPage() {
   const [subject, setSubject] = useState("英語");
@@ -21,10 +30,36 @@ export default function StudyPage() {
   const [memo, setMemo] = useState("");
   const [logs, setLogs] = useState<StudyLog[]>([]);
   const [errors, setErrors] = useState<{ subject?: string; minutes?: string }>({});
+  const [loading, setLoading] = useState(true);
+
+  // Firestoreから勉強記録を取得
+  useEffect(() => {
+    const q = query(
+      collection(db, "study-logs"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: StudyLog[] = snapshot.docs.map((d) => {
+        const docData = d.data();
+        return {
+          id: d.id,
+          subject: docData.subject ?? "",
+          minutes: docData.minutes ?? 0,
+          memo: docData.memo ?? "",
+          createdAt: docData.createdAt,
+        };
+      });
+      setLogs(data);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const totalMinutes = logs.reduce((sum, log) => sum + log.minutes, 0);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     const newErrors: { subject?: string; minutes?: string } = {};
@@ -44,21 +79,27 @@ export default function StudyPage() {
     }
 
     setErrors({});
-    const newLog: StudyLog = {
-      id: Date.now(),
-      subject,
-      minutes: num,
-      memo: memo || "（メモなし）",
-      createdAt: new Date().toISOString(),
-    };
 
-    setLogs((prev) => [newLog, ...prev]);
-    setMinutes("");
-    setMemo("");
+    try {
+      await addDoc(collection(db, "study-logs"), {
+        subject,
+        minutes: num,
+        memo: memo || "（メモなし）",
+        createdAt: serverTimestamp(),
+      });
+
+      // フォームをリセット
+      setMinutes("");
+      setMemo("");
+    } catch (error) {
+      console.error("勉強記録の追加に失敗:", error);
+      alert("記録の追加に失敗しました");
+    }
   };
 
   return (
-    <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center py-12 px-4">
+    <main className="fixed inset-0 bg-slate-900 text-white flex flex-col items-center overflow-hidden pt-16">
+      <div className="w-full max-w-3xl px-3 md:px-4 py-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
 
       <div className="w-full max-w-3xl">
 
@@ -72,15 +113,21 @@ export default function StudyPage() {
         </p>
 
         {/* 合計時間 */}
-        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800 px-4 py-4 text-sm shadow-sm flex justify-between">
-          <span className="text-slate-300">今日の合計勉強時間</span>
-          <span className="font-semibold text-blue-300">
-            {totalMinutes} 分
-          </span>
+        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800 px-4 py-4 text-sm shadow-sm">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-slate-400">記録数</span>
+              <span className="ml-2 font-semibold text-blue-300">{logs.length} 件</span>
+            </div>
+            <div>
+              <span className="text-slate-400">合計時間</span>
+              <span className="ml-2 font-semibold text-blue-300">{totalMinutes} 分</span>
+            </div>
+          </div>
         </div>
 
         {/* 入力フォーム */}
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4 bg-slate-800 p-6 rounded-lg border border-slate-700">
 
           {/* 科目 */}
           <div>
@@ -90,7 +137,7 @@ export default function StudyPage() {
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-700 px-3 py-2
                          text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-400"
             >
               {SUBJECT_OPTIONS.map((subj) => (
@@ -114,7 +161,7 @@ export default function StudyPage() {
               min={1}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-700 px-3 py-2
                          text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-400"
               placeholder="例: 30"
             />
@@ -131,7 +178,7 @@ export default function StudyPage() {
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-700 px-3 py-2
                          text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-400 min-h-[80px]"
               placeholder="今日やった内容や感想など"
             />
@@ -143,25 +190,41 @@ export default function StudyPage() {
         </form>
 
         {/* ログ一覧 */}
-        <div className="mt-8 space-y-3">
-          {logs.length === 0 ? (
-            <p className="text-sm text-slate-400">
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">記録一覧</h2>
+          
+          {loading ? (
+            <div className="text-center text-slate-400 py-8">
+              読み込み中...
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">
               まだ記録がありません。フォームから追加してみよう。
             </p>
           ) : (
-            logs.map((log) => (
-              <Card
-                key={log.id}
-                title={`${log.subject}：${log.minutes} 分`}
-                description={log.memo}
-                tag={new Date(log.createdAt).toLocaleTimeString("ja-JP", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              />
-            ))
+            <div className="space-y-3">
+              {logs.map((log) => {
+                const date = log.createdAt?.toDate?.();
+                const timeStr = date
+                  ? date.toLocaleTimeString("ja-JP", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "記録中";
+                
+                return (
+                  <Card
+                    key={log.id}
+                    title={`${log.subject}：${log.minutes} 分`}
+                    description={log.memo}
+                    tag={timeStr}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
+      </div>
       </div>
     </main>
   );
