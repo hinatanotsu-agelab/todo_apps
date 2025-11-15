@@ -18,7 +18,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   情報: "bg-emerald-500",
   物理: "bg-purple-500",
   化学: "bg-teal-500",
-  社会福祉学: "bg-rose-500",
+  社会福祉学: "bg-green-500",
   その他: "bg-slate-500",
 };
 const FALLBACK_COLORS = [
