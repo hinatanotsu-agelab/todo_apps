@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useMemo } from "react";
 import { Card } from "@/components/Card";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { BackLink } from "@/components/BackLink";
+import { StudyEditor, type StudyLogForEdit } from "@/components/StudyEditor";
 import {
   collection,
   addDoc,
@@ -11,8 +12,14 @@ import {
   onSnapshot,
   query,
   orderBy,
+  doc,
+  updateDoc,
+  deleteDoc,
+  where,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 type StudyLog = {
   id: string;
@@ -20,6 +27,7 @@ type StudyLog = {
   minutes: number;
   memo: string;
   createdAt: any;
+  userRef?: string;
 };
 
 const SUBJECT_OPTIONS = ["数学", "英語", "情報", "物理", "化学", "その他"];
@@ -31,16 +39,22 @@ export default function StudyPage() {
   const [logs, setLogs] = useState<StudyLog[]>([]);
   const [errors, setErrors] = useState<{ subject?: string; minutes?: string }>({});
   const [loading, setLoading] = useState(true);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<StudyLogForEdit | null>(null);
+  const [editingSrc, setEditingSrc] = useState<StudyLog | null>(null);
+  const [editingDate, setEditingDate] = useState<string>("");
+  const { user } = useAuth();
 
   // Firestoreから勉強記録を取得
   useEffect(() => {
-    const q = query(
-      collection(db, "study-logs"),
-      orderBy("createdAt", "desc")
-    );
+    if (!user) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data: StudyLog[] = snapshot.docs.map((d) => {
+    const nextHandler = (snapshot: any, sortInMemory = false) => {
+      const data: StudyLog[] = snapshot.docs.map((d: any) => {
         const docData = d.data();
         return {
           id: d.id,
@@ -48,16 +62,119 @@ export default function StudyPage() {
           minutes: docData.minutes ?? 0,
           memo: docData.memo ?? "",
           createdAt: docData.createdAt,
+          userRef: docData.userRef,
         };
       });
+      if (sortInMemory) {
+        data.sort((a, b) => {
+          const ta = a.createdAt?.toMillis?.() ?? a.createdAt?.toDate?.()?.getTime?.() ?? 0;
+          const tb = b.createdAt?.toMillis?.() ?? b.createdAt?.toDate?.()?.getTime?.() ?? 0;
+          return tb - ta; // desc
+        });
+      }
       setLogs(data);
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    let unsubscribe: () => void = () => {};
+
+    try {
+      const qOrdered = query(
+        collection(db, "study-logs"),
+        where("userRef", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+      unsubscribe = onSnapshot(
+        qOrdered,
+        (snap) => nextHandler(snap, false),
+        (err) => {
+          if ((err as any)?.code === "failed-precondition") {
+            const qFallback = query(
+              collection(db, "study-logs"),
+              where("userRef", "==", user.uid)
+            );
+            unsubscribe = onSnapshot(qFallback, (snap) => nextHandler(snap, true));
+          } else {
+            console.error("study-logs onSnapshot error:", err);
+            setLoading(false);
+          }
+        }
+      );
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
+    }
+
+    return () => unsubscribe?.();
+  }, [user]);
 
   const totalMinutes = logs.reduce((sum, log) => sum + log.minutes, 0);
+
+  // 日付別グルーピング（最新日付が上）
+  const groupedLogs = useMemo(() => {
+    const map = new Map<string, { label: string; sortKey: string; items: StudyLog[] }>();
+    const toYMD = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+    logs.forEach((log) => {
+      const d = log.createdAt?.toDate?.();
+      const sortKey = d ? toYMD(d) : "0000-00-00";
+      const label = d ? `${d.getMonth() + 1}月${d.getDate()}日` : "記録中";
+      if (!map.has(sortKey)) map.set(sortKey, { label, sortKey, items: [] });
+      map.get(sortKey)!.items.push(log);
+    });
+    return Array.from(map.values()).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+  }, [logs]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この学習記録を削除しますか？")) return;
+    try {
+      await deleteDoc(doc(db, "study-logs", id));
+    } catch (e) {
+      console.error("削除に失敗:", e);
+      alert("削除に失敗しました");
+    }
+  };
+
+  const handleEdit = (log: StudyLog) => {
+    const d = log.createdAt?.toDate?.();
+    const toYMD = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+    setEditing({ id: log.id, subject: log.subject, minutes: log.minutes, memo: log.memo });
+    setEditingDate(d ? toYMD(d) : "");
+    setEditingSrc(log);
+    setEditorOpen(true);
+  };
+
+  const handleSave = async (updated: StudyLogForEdit) => {
+    try {
+      const patch: any = {
+        subject: updated.subject,
+        minutes: Number(updated.minutes),
+        memo: updated.memo,
+      };
+      if (updated.newDate && editingSrc?.createdAt?.toDate) {
+        const orig = editingSrc.createdAt.toDate();
+        const [y, m, d] = updated.newDate.split("-").map((v) => Number(v));
+        const newDate = new Date(y, (m || 1) - 1, d || 1, orig.getHours(), orig.getMinutes(), orig.getSeconds(), 0);
+        patch.createdAt = Timestamp.fromDate(newDate);
+      }
+      await updateDoc(doc(db, "study-logs", updated.id), patch);
+      setEditorOpen(false);
+      setEditing(null);
+      setEditingSrc(null);
+    } catch (e) {
+      console.error("更新に失敗:", e);
+      alert("更新に失敗しました");
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -81,10 +198,12 @@ export default function StudyPage() {
     setErrors({});
 
     try {
+      if (!user) return;
       await addDoc(collection(db, "study-logs"), {
         subject,
         minutes: num,
         memo: memo || "（メモなし）",
+        userRef: user.uid,
         createdAt: serverTimestamp(),
       });
 
@@ -98,14 +217,10 @@ export default function StudyPage() {
   };
 
   return (
-    <main className="fixed inset-0 bg-slate-900 text-white flex flex-col items-center overflow-hidden pt-16">
-      <div className="w-full max-w-3xl px-3 md:px-4 py-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+    <main className="text-white flex flex-col items-center py-4 md:py-8">
+      <div className="w-full max-w-3xl px-3 md:px-4 py-6">
 
       <div className="w-full max-w-3xl">
-
-        <div className="w-full max-w-2xl mb-6">
-            <BackLink />
-        </div>
         
         <h1 className="text-3xl font-bold">勉強記録</h1>
         <p className="mt-2 text-sm text-slate-300">
@@ -202,29 +317,59 @@ export default function StudyPage() {
               まだ記録がありません。フォームから追加してみよう。
             </p>
           ) : (
-            <div className="space-y-3">
-              {logs.map((log) => {
-                const date = log.createdAt?.toDate?.();
-                const timeStr = date
-                  ? date.toLocaleTimeString("ja-JP", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "記録中";
-                
-                return (
-                  <Card
-                    key={log.id}
-                    title={`${log.subject}：${log.minutes} 分`}
-                    description={log.memo}
-                    tag={timeStr}
-                  />
-                );
-              })}
+            <div className="space-y-6">
+              {groupedLogs.map((group) => (
+                <div key={group.sortKey}>
+                  <h3 className="text-base font-semibold text-slate-200 mb-3">{group.label}</h3>
+                  <div className="space-y-3">
+                    {group.items.map((log) => {
+                      const date = log.createdAt?.toDate?.();
+                      const timeStr = date
+                        ? date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })
+                        : "記録中";
+                      return (
+                        <Card
+                          key={log.id}
+                          title={`${log.subject}：${log.minutes} 分`}
+                          description={log.memo}
+                          tag={timeStr}
+                        >
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => handleEdit(log)}
+                              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleDelete(log.id)}
+                              className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
+      {/* 編集モーダル */}
+      <StudyEditor
+        open={editorOpen}
+        log={editing}
+        onSave={handleSave}
+        onClose={() => {
+          setEditorOpen(false);
+          setEditing(null);
+          setEditingSrc(null);
+        }}
+        initialDate={editingDate}
+      />
       </div>
     </main>
   );

@@ -23,16 +23,23 @@ const features: Feature[] = [
   },
   {
     title: "タスク記録チャート",
-    description: "日ごとの作業時間をグラフで確認できます。（開発中）",
+    description: "日ごとの作業時間をグラフで確認できます。",
     tag: "可視化",
     href: "/stats",
   },
   {
+    title: "学習管理",
+    description: "学習タスクの管理と進捗確認ができます。",
+    tag: "学習",
+    href: "/study",
+  },
+  {
     title: "設定",
-    description: "テーマや通知など、アプリの設定を行います。（仮）",
+    description: "テーマや通知など、アプリの設定を行います。",
     tag: "設定",
     href: "/settings",
   },
+
 ];
 
 export default function HomePage() {
@@ -58,8 +65,8 @@ export default function HomePage() {
   }
 
   return (
-    <main className="fixed inset-0 bg-slate-900 flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-2xl px-4 py-8 overflow-y-auto max-h-screen">
+    <main className="flex items-center justify-center">
+      <div className="w-full max-w-2xl px-4 py-8">
         <h1 className="text-2xl font-bold text-white mb-2 text-center">
           ダッシュボード
         </h1>

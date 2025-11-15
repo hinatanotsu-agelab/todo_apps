@@ -22,13 +22,22 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
   background: radial-gradient(circle at 30% 20%, #1e293b, #0f172a 70%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* スクロールバーを非表示にするユーティリティ */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* 共通ユーティリティ */

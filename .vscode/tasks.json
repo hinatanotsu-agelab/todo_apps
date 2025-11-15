@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Remove fixed layouts in pages",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$files = @('src/app/page.tsx','src/app/todo/page.tsx','src/app/stats/page.tsx','src/app/study/page.tsx','src/app/settings/page.tsx','src/app/login/page.tsx','src/app/signup/page.tsx'); foreach ($f in $files) { (Get-Content $f) -replace 'className=\"fixed inset-0[^\"]*\"','className=\"flex items-center justify-center\"' -replace 'overflow-y-auto\"[^>]*','\"' -replace 'style=\\{\\{[^}]*\\}\\}','' | Set-Content $f }"
+			],
+			"group": "build"
+		}
+	]
+}

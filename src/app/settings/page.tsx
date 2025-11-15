@@ -102,19 +102,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="fixed inset-0 bg-slate-900 flex items-center justify-center overflow-hidden pt-16">
-      <div className="w-full max-w-2xl bg-slate-800/80 shadow-lg rounded-lg p-4 md:p-6 mx-2 my-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 5rem)' }}>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl md:text-2xl font-bold text-white">
+    <main className="flex items-center justify-center py-4 md:py-8">
+      <div className="w-full max-w-2xl bg-slate-800/80 shadow-lg rounded-lg p-4 md:p-6 mx-2 my-4">
+          <h1 className="mb-4 text-xl md:text-2xl font-bold text-white">
             設定
           </h1>
-          <Link
-            href="/"
-            className="text-xs md:text-sm text-blue-400 hover:underline"
-          >
-            ホームに戻る
-          </Link>
-        </div>
 
         {error && (
           <div className="mb-4 bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded text-sm">

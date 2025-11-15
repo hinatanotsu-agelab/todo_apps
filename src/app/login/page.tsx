@@ -50,8 +50,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="fixed inset-0 bg-slate-900 flex items-center justify-center px-4 overflow-hidden">
-      <div className="w-full max-w-md overflow-y-auto" style={{ maxHeight: '90vh' }}>
+    <main className="flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md">
         <div className="bg-slate-800 rounded-lg shadow-xl p-8">
           <h1 className="text-2xl font-bold text-white mb-6 text-center">
             ログイン
