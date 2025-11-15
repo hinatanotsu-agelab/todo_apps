@@ -11,13 +11,14 @@ type ChartProps = {
   data: StackedPoint[];
 };
 
-const SUBJECT_ORDER = ["数学", "英語", "情報", "物理", "化学", "その他"];
+const SUBJECT_ORDER = ["数学", "英語", "情報", "物理", "化学", "社会福祉学", "その他"];
 const SUBJECT_COLORS: Record<string, string> = {
   数学: "bg-indigo-500",
   英語: "bg-blue-500",
   情報: "bg-emerald-500",
   物理: "bg-purple-500",
   化学: "bg-teal-500",
+  社会福祉学: "bg-rose-500",
   その他: "bg-slate-500",
 };
 const FALLBACK_COLORS = [

@@ -18,7 +18,7 @@ type StudyEditorProps = {
   initialDate: string; // YYYY-MM-DD
 };
 
-const SUBJECT_OPTIONS = ["数学", "英語", "情報", "物理", "化学", "その他"];
+const SUBJECT_OPTIONS = ["数学", "英語", "情報", "物理", "化学", "社会福祉学", "その他"];
 
 export function StudyEditor({ open, log, onSave, onClose, initialDate }: StudyEditorProps) {
   const [subject, setSubject] = useState("");
